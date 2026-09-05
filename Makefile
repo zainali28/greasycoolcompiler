@@ -1,15 +1,13 @@
 CXX = gcc
-TARGET = compiler
+TARGET = ./build/compiler
 
 all: $(TARGET)
 
-$(TARGET): compiler.o
-	$(CXX) -o $(TARGET) compiler.o 
-
-compiler.o: compiler.c
-	$(CXX) -c compiler.c
+$(TARGET): compiler.c
+	mkdir build
+	$(CXX) compiler.c -o $(TARGET) 
 
 .PHONY: clean
 
 clean:
-	rm -f *.o $(TARGET)
+	rm -rf ./build
