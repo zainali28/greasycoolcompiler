@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 // constants
 #define MAX_FILENAME_LEN 64	// max filename len
@@ -12,61 +13,155 @@
 #define MIN_NUM_VALID_ARGS 2
 
 // return codes
-#define SUCCESS 0
-#define FAILED	-1
-#define FILENAME_ERR -2
 #define ARG_ERR -3
+#define FILENAME_ERR -2
+#define FAILED	-1
+#define SUCCESS 0
+#define FILE_EXISTS 1
+#define NO_FILE_EXIST 2
+#define SPECIAL_CHAR_FOUND 3
+#define NO_SPECIAL_CHAR_FOUND 4
+#define EXTENSION_VALID 5
+#define EXTENSION_INVALID 6
 
 // ascii table reference values
-#define ASCII_0 48
-#define ASCII_9 57
-#define ASCII_A 65
-#define ASCII_Z 90
-#define ASCII_a	97
-#define ASCII_z 122
+#define ASCII_0 '0'
+#define ASCII_9 '9'
+#define ASCII_A 'A'
+#define ASCII_Z 'Z'
+#define ASCII_a	'a'
+#define ASCII_z 'z'
+#define ASCII_dot '.'
 
-int check_special_character(char *str_p)
+void print_error(int err)
+{
+	printf("[FAILED] Reason: ");
+	switch(err)
+	{
+		case ARG_ERR:
+		{
+			printf("Wrong arguements\r\n");
+			break;
+		}
+		
+		case FILENAME_ERR:
+		{
+			printf("Filename error\r\n");
+			break;
+		}
+
+		case FAILED:
+		{
+			printf("Failed\r\n");
+			break;
+		}
+
+		case FILE_EXISTS:
+		{
+			printf("File already exists\r\n");
+			break;
+		}
+
+		case NO_FILE_EXIST:
+		{
+			printf("File does not exist\r\n");
+			break;
+		}
+
+		case SPECIAL_CHAR_FOUND:
+		{
+			printf("Special character found\r\n");
+			break;
+		}
+
+		case NO_SPECIAL_CHAR_FOUND:
+		{
+			printf("No special character found\r\n");
+			break;
+		}
+
+		case EXTENSION_VALID:
+		{
+			printf("Extension valid\r\n");
+			break;
+		}
+
+		case EXTENSION_INVALID:
+		{
+			printf("Extension invalid\r\n");
+			break;
+		}	
+		default:
+		{
+			printf("Unkown\r\n");
+			break;
+		}	
+	}
+}
+
+
+int check_file_exists(char *filename)
 {
 	// local vars
-	char *str_buf_p = str_p;
-	
-	while (*(str_buf_p++) != '\0')
+	int err = FAILED;
+
+	FILE *fptr;
+
+	fptr = fopen(filename, "r");
+	if (NULL == fptr)
 	{
-		if ( (ASCII_0 > *str_buf_p) || ((ASCII_9 < *str_buf_p) && (ASCII_A > *str_buf_p)) || ( (ASCII_Z < *str_buf_p) && (ASCII_a > *str_buf_p) ) \
-			       || (ASCII_z < *str_buf_p)	)
+		goto fail;
+	}
+	else
+	{
+		goto pass;
+	}
+
+pass:
+	return FILE_EXISTS;
+fail:
+	return NO_FILE_EXIST;
+}
+
+int check_special_character(char *str)
+{
+	// local vars
+	char *str_buf = str;
+	
+	while ('\0' != *str_buf)
+	{
+		if ( ( (ASCII_0 > *str_buf) && (ASCII_dot != *str_buf) ) || ((ASCII_9 < *str_buf) && (ASCII_A > *str_buf)) || ( (ASCII_Z < *str_buf) && (ASCII_a > *str_buf) ) || (ASCII_z < *str_buf) )
 		{
 			goto fail;
 		}
 		else
 		{
-			;
+			str_buf++;
 		}
 	}
 
 pass:
-	return SUCCESS;
+	return NO_SPECIAL_CHAR_FOUND;
 
 fail:
-	printf("[ERROR] Invalid special characters in the name: %s, exiting...\r\n", str_p);
-	return FILENAME_ERR;
+	return SPECIAL_CHAR_FOUND;
 }
 
 
-int check_input_file_extension(char *filename_p)
+int check_input_file_extension(char *filename)
 {
 	// local vars
-	uint8_t file_len = strlen(filename_p);
-
+	uint8_t file_len = strlen(filename);
 	uint8_t ext_idx = file_len - FILE_EXTENSION_LEN;
 	
 	// check if the extension is there or not
-	if ('.' == filename_p[ext_idx++])
+	if ('.' == filename[ext_idx++])
 	{
 		// check if the extension is valid or not
-		if ( ('g' == filename_p[ext_idx++]) && ('c' == filename_p[ext_idx++]) )
+		if ( ('g' == filename[ext_idx++]) && ('c' == filename[ext_idx++]) )
 		{
 			// check if this is the complete extension
-			if ('\0' == filename_p[ext_idx])
+			if ('\0' == filename[ext_idx])
 			{
 				goto pass;
 			}
@@ -88,33 +183,32 @@ int check_input_file_extension(char *filename_p)
 
 
 fail:
-	printf("[ERROR] No / invalid extension, exiting...\r\n");
-	return FILENAME_ERR;
+	return EXTENSION_INVALID;
 
 pass:
-	printf("[INFO] Extension verified...\r\n");
-	return SUCCESS;
+	return EXTENSION_VALID;
 }
 
-int check_input_filename(char *filename_p)
+int check_input_filename(char *filename)
 {
 	// local vars
-	uint8_t file_len = strlen(filename_p);
+	uint8_t file_len = strlen(filename);
 	int err = FAILED;
 
 	// check if it is within bounds
 	if ( (MIN_FILENAME_LEN > file_len) ||  (MAX_FILENAME_LEN < file_len) )
 	{
+		err = FILENAME_ERR;
 		goto fail;	
 	}	
 	else
 	{
 		;
 	}
-	
-	// check for the filename itself for any special characters
-	err = check_special_character(filename_p);
-	if (err != SUCCESS)
+
+	// check extension
+	err = check_input_file_extension(filename);
+	if (EXTENSION_VALID != err)
 	{
 		goto fail;
 	}
@@ -123,36 +217,72 @@ int check_input_filename(char *filename_p)
 		;
 	}
 
-	// check extension
-	err = check_input_file_extension(filename_p);
-	if (err != SUCCESS)
+	// check for the filename itself for any special characters
+	err = check_special_character(filename);
+	if (SPECIAL_CHAR_FOUND == err)
 	{
 		goto fail;
 	}
 	else
 	{
-		goto pass;
+		;
 	}
 	
+	// check if the file exists
+	err = check_file_exists(filename);
+	if (FILE_EXISTS != err)
+	{
+		goto fail;
+	}	
+	else 
+	{
+		goto pass;
+	}
+
 fail:
-	printf("[ERROR] Error in input filename, exiting...\r\n");
-	return FILENAME_ERR;
+	return err;
 pass:
 	return SUCCESS;
 }
 
-int check_output_filename(char *filename_p)
-{
+int check_output_filename(char *filename)
+{	
+	// local vars
+	int err = FAILED;
+
+	// check for the filename itself for any special characters
+	err = check_special_character(filename);
+	if (SUCCESS != err)
+	{
+		goto fail;
+	}
+	else
+	{
+		;
+	}
+
+	// check if the file already exists
+	err = check_file_exists(filename);
+	if (FILE_EXISTS == err)
+	{
+		goto fail;
+	}
+	else
+	{
+		;
+	}
 pass:
 	return SUCCESS;
+fail:
+	return err;
 }
 
-void set_input_filename(char *input_filename_p, char *filename_p)
+void set_input_filename(char *input_filename, char *filename)
 {
 	return;
 }
 
-void set_output_filename(char *output_filename_p, char *input_filename_p)
+void set_output_filename(char *output_filename, char *input_filename)
 {
 	return;
 }
@@ -176,8 +306,9 @@ int main(int argc, char **argv)
 	// arguement checks
 	if ((1 >= argc) || (3 < argc))
 	{
-		printf("[ERROR] Invalid number of arguements, exiting...\r\n");
-		return ARG_ERR;
+		err = ARG_ERR;
+		print_error(err);
+		return err;
 	}
 	else if (MIN_NUM_VALID_ARGS == argc)
 	{
@@ -191,8 +322,9 @@ int main(int argc, char **argv)
 
 	// check input file name
 	err = check_input_filename(argv[INPUT_ARG_IDX]);
-	if (err != SUCCESS)
+	if (SUCCESS != err)
 	{
+		print_error(err);
 		return err;
 	}
 	else
@@ -207,8 +339,9 @@ int main(int argc, char **argv)
 	if (output_filename_passed)
 	{
 		err = check_output_filename(argv[OUTPUT_ARG_IDX]);
-		if (err != SUCCESS)
+		if (SUCCESS != err)
 		{
+			print_error(err);
 			return err;
 		}
 		else
