@@ -13,8 +13,9 @@
 
 // return codes
 #define SUCCESS 0
-#define FILENAME_ERR -1
-#define ARG_ERR -1
+#define FAILED	-1
+#define FILENAME_ERR -2
+#define ARG_ERR -3
 
 // ascii table reference values
 #define ASCII_0 48
@@ -24,21 +25,48 @@
 #define ASCII_a	97
 #define ASCII_z 122
 
-int check_input_file_extension(char *file_ptr)
+int check_special_character(char *str_p)
 {
 	// local vars
-	uint8_t file_len = strlen(file_ptr);
+	char *str_buf_p = str_p;
+	
+	while (*(str_buf_p++) != '\0')
+	{
+		if ( (ASCII_0 > *str_buf_p) || ((ASCII_9 < *str_buf_p) && (ASCII_A > *str_buf_p)) || ( (ASCII_Z < *str_buf_p) && (ASCII_a > *str_buf_p) ) \
+			       || (ASCII_z < *str_buf_p)	)
+		{
+			goto fail;
+		}
+		else
+		{
+			;
+		}
+	}
+
+pass:
+	return SUCCESS;
+
+fail:
+	printf("[ERROR] Invalid special characters in the name: %s, exiting...\r\n", str_p);
+	return FILENAME_ERR;
+}
+
+
+int check_input_file_extension(char *filename_p)
+{
+	// local vars
+	uint8_t file_len = strlen(filename_p);
 
 	uint8_t ext_idx = file_len - FILE_EXTENSION_LEN;
 	
 	// check if the extension is there or not
-	if ('.' == file_ptr[ext_idx++])
+	if ('.' == filename_p[ext_idx++])
 	{
 		// check if the extension is valid or not
-		if ( ('g' == file_ptr[ext_idx++]) && ('c' == file_ptr[ext_idx++]) )
+		if ( ('g' == filename_p[ext_idx++]) && ('c' == filename_p[ext_idx++]) )
 		{
 			// check if this is the complete extension
-			if ('\0' == file_ptr[ext_idx])
+			if ('\0' == filename_p[ext_idx])
 			{
 				goto pass;
 			}
@@ -68,21 +96,35 @@ pass:
 	return SUCCESS;
 }
 
-int check_input_filename(char *file_ptr)
+int check_input_filename(char *filename_p)
 {
 	// local vars
-	uint8_t file_len = strlen(file_ptr);
+	uint8_t file_len = strlen(filename_p);
+	int err = FAILED;
 
 	// check if it is within bounds
 	if ( (MIN_FILENAME_LEN > file_len) ||  (MAX_FILENAME_LEN < file_len) )
 	{
 		goto fail;	
 	}	
+	else
+	{
+		;
+	}
 	
 	// check for the filename itself for any special characters
-	
+	err = check_special_character(filename_p);
+	if (err != SUCCESS)
+	{
+		goto fail;
+	}
+	else
+	{
+		;
+	}
+
 	// check extension
-	int err = check_input_file_extension(file_ptr);
+	err = check_input_file_extension(filename_p);
 	if (err != SUCCESS)
 	{
 		goto fail;
@@ -99,18 +141,18 @@ pass:
 	return SUCCESS;
 }
 
-int check_output_filename(char *file_ptr)
+int check_output_filename(char *filename_p)
 {
 pass:
 	return SUCCESS;
 }
 
-void set_input_filename(char *input_filename, char *filename)
+void set_input_filename(char *input_filename_p, char *filename_p)
 {
 	return;
 }
 
-void set_output_filename(char *output_filename, char *input_filename)
+void set_output_filename(char *output_filename_p, char *input_filename_p)
 {
 	return;
 }
@@ -118,7 +160,7 @@ void set_output_filename(char *output_filename, char *input_filename)
 int main(int argc, char **argv)
 {
 	// error vars
-	int err = -1;
+	int err = FAILED;
 	
 	// buffer vars
 	char input_filename[MAX_FILENAME_LEN];
@@ -153,6 +195,10 @@ int main(int argc, char **argv)
 	{
 		return err;
 	}
+	else
+	{
+		;
+	}
 
 	// copy the input filename in the local buffer
 	set_input_filename(input_filename, argv[INPUT_ARG_IDX]);
@@ -164,6 +210,10 @@ int main(int argc, char **argv)
 		if (err != SUCCESS)
 		{
 			return err;
+		}
+		else
+		{
+			;
 		}
 	}
 	else
